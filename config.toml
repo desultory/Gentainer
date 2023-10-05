@@ -1,0 +1,6 @@
+
+build_dir = "./build"  # The directory containers will be built in
+dir_back = "btrfs"  # The backing type for the build directory
+                    # (btrfs or dir)
+config_dir = "./config" # The directory containing config files for containers
+lxc_usernet_file = "/etc/lxc/lxc-usernet"  # LXC usernet config file path

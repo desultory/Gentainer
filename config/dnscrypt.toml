@@ -1,0 +1,8 @@
+
+container_user = "lxc-dnscrypt"
+
+usernet_allocation = { "lxcbr0" = 1 }
+
+base_image = "gentoo_tini"
+
+packages = ["net-dns/dnscrypt-proxy"]

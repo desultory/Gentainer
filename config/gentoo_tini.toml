@@ -1,0 +1,4 @@
+
+base_image = "gentoo_base"
+
+packages = ["sys-process/tini"]
