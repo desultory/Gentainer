@@ -3,7 +3,7 @@ Gentoo container user management
 """
 
 __author__ = 'desultory'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 from .zen_custom import loggify, replace_file_line
@@ -20,13 +20,16 @@ class UserManagement:
     Gentoo container user management class
     """
 
-    def __init__(self, container_config, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
+    parameters = {"username": str,  # User name for the unprivileged container user
+                  "usernet_allocation": dict}  # {interface: count} for the container user
+
+    def __init__(self, user_config, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
         """
         Initialize the user maangement class for the specified user
         """
         self.force = force  # Force operations
         self.lxc_usernet_file = Path(lxc_usernet_file)
-        self.load_config(container_config)
+        self.load_config(user_config)
 
     def prepare(self):
         """
@@ -37,11 +40,10 @@ class UserManagement:
 
     def load_config(self, container_config):
         """
-        Loads the container configuration
+        Loads the user configuration from the container configuration
         """
-        self.logger.debug("Loading container configuration:\n%s" % container_config)
         self.config = container_config
-        self.username = self.config['container_user']
+        self.username = self.config['username']
         self.usernet_allocation = self.config['usernet_allocation']
 
     def check_user(self):
@@ -94,7 +96,7 @@ class UserManagement:
             else:
                 raise ValueError("Invalid usernet entry: %s" % line)
 
-        self.logger.debug("Existing usernet entries for %s: %s" % (self.username, usernet_entries))
+        self.logger.log(5, "Existing usernet entries for %s: %s" % (self.username, usernet_entries))
         return usernet_entries
 
     def create_usernet_file(self):
@@ -146,10 +148,13 @@ class UserManagement:
             else:
                 self.add_usernet_entry(interface, count)
 
-    def _add_usernet_entry(self, interface, count):
+    def add_usernet_entry(self, interface, count):
         """
         Adds the specified usernet entry to the usernet file.
         """
+        if interface in self.parse_usernet_user():
+            raise RuntimeError("Usernet entry already exists: %s" % interface)
+
         usernet_entry = f"{self.username} veth {interface} {count}\n"
         with open(self.lxc_usernet_file, 'a') as f:
             f.write(usernet_entry)

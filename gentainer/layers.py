@@ -3,7 +3,7 @@ Gentoo container layer management
 """
 
 __author__ = 'desultory'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 from .zen_custom import loggify
@@ -17,6 +17,8 @@ class Layers:
     """
     Gentoo container layers
     """
+
+    parameters = {'base_image': str}  # The base image to use for the layer
 
     def __init__(self, container, build_dir, directory_backing, base_image=None, force=False, *args, **kwargs):
         """

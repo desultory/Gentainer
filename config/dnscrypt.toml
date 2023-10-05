@@ -1,5 +1,4 @@
-
-container_user = "lxc-dnscrypt"
+username = "lxc-dnscrypt"
 
 usernet_allocation = { "lxcbr0" = 1 }
 

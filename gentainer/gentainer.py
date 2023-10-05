@@ -3,7 +3,7 @@ Gentoo containers
 """
 
 __author__ = 'desultory'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 from .zen_custom import loggify
@@ -57,11 +57,19 @@ class Gentainer:
         with open(config, 'rb') as config_file:
             self.config = load(config_file)
 
+        for module in self.config['modules']:
+            self.logger.info("Loading module: %s" % module)
+            ContainerConfig.load_module(module)
+
+        self.logger.debug("Parameters: %s" % ContainerConfig.parameters)
+
         self.build_dir = Path(self.config.get('build_dir', '/tmp/gentainer_build'))
         self.config_dir = Path(self.config.get('config_dir', './config'))
         self.usernet_file = Path(self.config.get('lxc_usernet_file', '/etc/lxc/lxc-usernet'))
 
         self.directory_backing = self.config.get('dir_backing', 'btrfs')
+
+        self.logger.debug("Configuration: %s" % self.config)
 
         self.load_containers()
 
@@ -83,7 +91,7 @@ class Gentainer:
         if container not in self.containers:
             raise KeyError("Container does not exist: %s" % container)
 
-        if 'container_user' in self.containers[container]:
+        if 'username' in self.containers[container]:
             user = UserManagement(self.containers[container], force=self.force, lxc_usernet_file=self.usernet_file, logger=self.logger, _log_init=False)
             user.prepare()
 

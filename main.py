@@ -8,7 +8,6 @@ from argparse import ArgumentParser
 
 if __name__ == '__main__':
     logger = logging.getLogger()
-    file_handler = logging.FileHandler('log.txt')
     logger.setLevel(20)
 
     parser = ArgumentParser(description='Gentainer')

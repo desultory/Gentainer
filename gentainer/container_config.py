@@ -3,14 +3,13 @@ Gentoo container configuration dictionary
 """
 
 __author__ = 'desultory'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 from .zen_custom import loggify
 
+from importlib import import_module
 from tomllib import load
-
-import portage
 
 
 @loggify
@@ -18,13 +17,8 @@ class ContainerConfig(dict):
     """
     Dictionary container gentoo container configuration
     """
-    # Parameter key is the name
-    # Parameter value is the type
-    required_parameters = {'packages': list}  # Packages to install
-
-    optional_parameters = {'base_image': str,  # Base image to use when building
-                           'container_user': str,  # Container user to create/use when running the container
-                           'usernet_allocation': dict}  # Usernet allocation in the form {"interace name": count}
+    # Parameters are added when modules are loaded
+    parameters = {}
 
     def __init__(self, config_file, *args, **kwargs):
         """
@@ -32,6 +26,24 @@ class ContainerConfig(dict):
         """
         self.config_file = config_file
         self.load_config()
+
+    @staticmethod
+    def load_module(module_name):
+        """
+        Loads a module and adds its parameters to the config
+        """
+        module_name, class_name = module_name.rsplit('.', 1)
+        module = import_module("." + module_name, __package__)
+
+        class_object = getattr(module, class_name)
+
+        # If the module has parameters, add them to the class
+        if hasattr(class_object, 'parameters'):
+            ContainerConfig.parameters.update(class_object.parameters)
+            for paramater in class_object.parameters:
+                # If the module has a validate function for the parameter, add it to the class
+                if hasattr(class_object, f'validate_{paramater}'):
+                    setattr(ContainerConfig, f'validate_{paramater}', getattr(class_object, f'validate_{paramater}'))
 
     def load_config(self):
         """
@@ -43,36 +55,18 @@ class ContainerConfig(dict):
 
         self.logger.debug("Read TOML data: %s" % toml_data)
 
-        for key, value in self.required_parameters.items():
-            if key not in toml_data:
-                raise KeyError("Missing required parameter: %s" % key)
-            elif not isinstance(toml_data[key], value):
-                raise TypeError("Invalid type for %s: %s" % (key, type(toml_data[key])))
-            else:
-                self.logger.debug("Setting required parameter %s: %s" % (key, toml_data[key]))
-                self[key] = toml_data[key]
-
         for key, value in toml_data.items():
             if hasattr(self, f"validate_{key}"):
                 self.logger.debug("Validating parameter %s: %s" % (key, value))
                 getattr(self, f"validate_{key}")(value)
 
-            if key in self.optional_parameters:
-                if isinstance(value, self.optional_parameters[key]):
-                    self.logger.debug("Setting optional parameter %s: %s" % (key, value))
+            if key in self.parameters:
+                if isinstance(value, self.parameters[key]):
                     self[key] = value
                 else:
-                    self.logger.warning("Invalid type for %s: %s" % (key, type(value)))
-            elif key not in self.required_parameters:
-                self.logger.warning("Unknown parameter in config: %s" % key)
-
-    def validate_packages(self, packages):
-        """
-        Checks if the package exists in the porgage database
-        """
-        for package in packages:
-            if not portage.db[portage.root]['porttree'].dbapi.match(package):
-                raise KeyError("Package does not exist: %s" % package)
+                    raise TypeError("Invalid type for %s: %s" % (key, type(value)))
+            else:
+                raise ValueError("Unknown parameter: %s" % key)
 
     def __str__(self):
         """
