@@ -11,7 +11,7 @@ from .zen_custom import loggify, replace_file_line
 from pathlib import Path
 from pwd import getpwnam
 from subprocess import run
-from os import chmod
+from os import chmod, mkdir, chown
 
 
 @loggify
@@ -23,10 +23,11 @@ class UserManagement:
     parameters = {"username": str,  # User name for the unprivileged container user
                   "usernet_allocation": dict}  # {interface: count} for the container user
 
-    def __init__(self, user_config, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
+    def __init__(self, user_config, container, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
         """
         Initialize the user maangement class for the specified user
         """
+        self.container = container  # Container name
         self.force = force  # Force operations
         self.lxc_usernet_file = Path(lxc_usernet_file)
         self.load_config(user_config)
@@ -36,6 +37,7 @@ class UserManagement:
         Run preparation actions, such as creating the user and usernet entries
         """
         self.create_user()
+        self.create_container_home()
         self.prepare_usernets()
 
     def load_config(self, container_config):
@@ -73,6 +75,31 @@ class UserManagement:
 
         if user_cmd.returncode != 0:
             raise RuntimeError("Failed to create user: %s; Error: %s" % (self.username, user_cmd.stderr.decode('utf-8')))
+
+    def create_container_home(self):
+        """
+        Creates LXC folders for the container user.
+        Owns the folders to the container user if necessary.
+        """
+        user_home = Path(getpwnam(self.username).pw_dir)
+        path_parts = ['.local', 'share', 'lxc', self.container]
+
+        lxc_dir = user_home
+
+        for part in path_parts:
+            lxc_dir = lxc_dir.joinpath(part)
+            if not lxc_dir.exists():
+                self.logger.info("[%s] Creating LXC directory: %s" % (self.username, lxc_dir))
+                mkdir(lxc_dir)
+            else:
+                self.logger.debug("[%s] LXC directory already exists: %s" % (self.username, lxc_dir))
+
+            uid = getpwnam(self.username).pw_uid
+            gid = getpwnam(self.username).pw_gid
+            if lxc_dir.stat().st_uid != uid or lxc_dir.stat().st_gid != gid:
+                self.logger.warning("[%s] Incorrect ownership of LXC directory: %s" % (self.username, lxc_dir))
+                chown(lxc_dir, getpwnam(self.username).pw_uid, getpwnam(self.username).pw_gid)
+                self.logger.debug("[%s] Setting ownership of LXC directory: %s" % (self.username, lxc_dir))
 
     def parse_usernet_user(self):
         """
@@ -135,7 +162,7 @@ class UserManagement:
         existing_usernets = self.parse_usernet_user()
 
         for interface, count in self.usernet_allocation.items():
-            self.logger.debug("Considering usernet entry for user %s, %s: %s" % (self.username, interface, count))
+            self.logger.debug("[%s] Considering usernet entry: %s - %s" % (self.username, interface, count))
             if interface in existing_usernets and existing_usernets[interface] != count:
                 self.logger.warning("[%s] Usernet '%s' already exists with a different allocation: %s != %s" % (self.username, interface, existing_usernets[interface], count))
                 if self.force:

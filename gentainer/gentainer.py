@@ -41,7 +41,7 @@ class Gentainer:
 
         self.logger.info("Loading containers from %s" % self.config_dir)
         for container in Path(self.config_dir).glob('*.toml'):
-            self.containers[container.stem] = ContainerConfig(config_file=container, logger=self.logger, _log_init=False)
+            self.containers[container.stem] = ContainerConfig(config_file=container, logger=self.logger)
 
         if not self.containers:
             self.logger.warning("No container config loaded")
@@ -92,8 +92,10 @@ class Gentainer:
             raise KeyError("Container does not exist: %s" % container)
 
         if 'username' in self.containers[container]:
-            user = UserManagement(self.containers[container], force=self.force, lxc_usernet_file=self.usernet_file, logger=self.logger, _log_init=False)
+            user = UserManagement(self.containers[container], container, force=self.force, lxc_usernet_file=self.usernet_file, logger=self.logger)
             user.prepare()
+        else:
+            self.logger.info("No preparation needed for container: %s" % container)
 
     def build(self, container):
         """
@@ -105,7 +107,7 @@ class Gentainer:
         self.prepare(container)
 
         layer_args = [container, self.build_dir, self.directory_backing]
-        layer_kwargs = {'force': self.force, 'logger': self.logger, '_log_init': False}
+        layer_kwargs = {'force': self.force, 'logger': self.logger}
         if 'base_image' in self.containers[container]:
             base_image = self.containers[container]['base_image']
             self.logger.info("Building base image `%s` for container: %s" % (base_image, container))
@@ -115,6 +117,6 @@ class Gentainer:
         layer = Layers(*layer_args, **layer_kwargs)
         layer.prepare()
 
-        builder = Builder(container, layer.layer_dir, self.containers[container]['packages'], force=self.force, logger=self.logger, _log_init=False)
+        builder = Builder(container, layer.layer_dir, self.containers[container]['packages'], force=self.force, logger=self.logger)
         builder.build()
 

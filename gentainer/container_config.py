@@ -39,11 +39,15 @@ class ContainerConfig(dict):
 
         # If the module has parameters, add them to the class
         if hasattr(class_object, 'parameters'):
-            ContainerConfig.parameters.update(class_object.parameters)
-            for paramater in class_object.parameters:
+            for parameter, value in class_object.parameters.items():
+                if hasattr(ContainerConfig, parameter):
+                    raise AttributeError("Parameter %s already exists" % parameter)
+
+                ContainerConfig.parameters[parameter] = value
+
                 # If the module has a validate function for the parameter, add it to the class
-                if hasattr(class_object, f'validate_{paramater}'):
-                    setattr(ContainerConfig, f'validate_{paramater}', getattr(class_object, f'validate_{paramater}'))
+                if hasattr(class_object, f'validate_{parameter}'):
+                    setattr(ContainerConfig, f'validate_{parameter}', getattr(class_object, f'validate_{parameter}'))
 
     def load_config(self):
         """
