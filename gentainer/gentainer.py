@@ -3,15 +3,16 @@ Gentoo containers
 """
 
 __author__ = 'desultory'
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
-from .zen_custom import loggify
+from gentainer.zen_custom import loggify, pretty_print
 
-from .container_config import ContainerConfig
-from .users import UserManagement
-from .layers import Layers
-from .builder import Builder
+from gentainer.container_config import ContainerConfig
+from gentainer.users import UserManager
+from gentainer.layers import Layers
+from gentainer.nets import ContainerNet, HostNet
+from gentainer.builder import Builder
 
 
 from tomllib import load
@@ -39,9 +40,9 @@ class Gentainer:
         if not self.config_dir.exists():
             raise FileNotFoundError("Container directory does not exist: %s" % self.config_dir)
 
-        self.logger.info("Loading containers from %s" % self.config_dir)
+        self.logger.info("Loading containers from: %s" % self.config_dir)
         for container in Path(self.config_dir).glob('*.toml'):
-            self.containers[container.stem] = ContainerConfig(config_file=container, logger=self.logger)
+            self.containers[container.stem] = ContainerConfig(config_file=container, logger=self.logger, _log_init=False)
 
         if not self.containers:
             self.logger.warning("No container config loaded")
@@ -66,10 +67,11 @@ class Gentainer:
         self.build_dir = Path(self.config.get('build_dir', '/tmp/gentainer_build'))
         self.config_dir = Path(self.config.get('config_dir', './config'))
         self.usernet_file = Path(self.config.get('lxc_usernet_file', '/etc/lxc/lxc-usernet'))
+        self.network_config = HostNet(self.config.get('network_config', 'networks.toml'), force=self.force, logger=self.logger)
 
         self.directory_backing = self.config.get('dir_backing', 'btrfs')
 
-        self.logger.debug("Configuration: %s" % self.config)
+        self.logger.debug("Configuration: %s" % pretty_print(self.config))
 
         self.load_containers()
 
@@ -77,11 +79,35 @@ class Gentainer:
         """
         List all containers
         """
-        for name, container in self.containers.items():
-            if filter_string and filter_string in name:
-                print(f"{name}:\n{container}")
-            elif not filter_string:
-                print(f"{name}:\n{container}")
+        print("Containers:")
+        for container in self.containers.values():
+            if filter_string and filter_string in container.name or not filter_string:
+                print(container)
+
+        print("=" * 80)
+        print("Networks:")
+        print(self.network_config)
+
+    def net_clean(self, interface=None):
+        """
+        Cleans the specified network
+        """
+        if interface:
+            self.network_config.clean_interface(interface)
+        else:
+            self.network_config.clean()
+
+    def net_prepare(self, interface=None):
+        """
+        Prepares the specified network
+        """
+        if interface:
+            if isinstance(interface, dict):
+                self.network_config.configure_interface(interface.keys())
+            else:
+                self.network_config.configure_interface(interface)
+        else:
+            self.network_config.prepare()
 
     def prepare(self, container):
         """
@@ -91,11 +117,13 @@ class Gentainer:
         if container not in self.containers:
             raise KeyError("Container does not exist: %s" % container)
 
+        if 'networks' in self.containers[container]:
+            net = ContainerNet(self.containers[container], force=self.force, logger=self.logger)
+            self.net_prepare(net.networks)
+
         if 'username' in self.containers[container]:
-            user = UserManagement(self.containers[container], container, force=self.force, lxc_usernet_file=self.usernet_file, logger=self.logger)
+            user = UserManager(self.containers[container], force=self.force, lxc_usernet_file=self.usernet_file, logger=self.logger)
             user.prepare()
-        else:
-            self.logger.info("No preparation needed for container: %s" % container)
 
     def build(self, container):
         """

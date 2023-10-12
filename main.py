@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser(description='Gentainer')
     parser.add_argument('--config', type=str, help='Path to config file', default='config.toml')
-    parser.add_argument('action', type=str, help='Action to perform', choices=['list', 'prepare', 'build', 'run'])
+    parser.add_argument('action', type=str, help='Action to perform', choices=['list', 'prepare', 'build', 'run', 'net_prepare', 'net_clean'])
     parser.add_argument('container_name', type=str, help='Name of the container to run', nargs='?')
     parser.add_argument('--force', action='store_true', help='Force action')
     parser.add_argument('-d', '--debug', action='store_true', help='Debug mode')

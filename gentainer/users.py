@@ -6,7 +6,7 @@ __author__ = 'desultory'
 __version__ = '0.0.2'
 
 
-from .zen_custom import loggify, replace_file_line
+from gentainer.zen_custom import loggify, replace_file_line
 
 from pathlib import Path
 from pwd import getpwnam
@@ -15,7 +15,7 @@ from os import chmod, mkdir, chown
 
 
 @loggify
-class UserManagement:
+class UserManager:
     """
     Gentoo container user management class
     """
@@ -23,11 +23,10 @@ class UserManagement:
     parameters = {"username": str,  # User name for the unprivileged container user
                   "usernet_allocation": dict}  # {interface: count} for the container user
 
-    def __init__(self, user_config, container, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
+    def __init__(self, user_config, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
         """
         Initialize the user maangement class for the specified user
         """
-        self.container = container  # Container name
         self.force = force  # Force operations
         self.lxc_usernet_file = Path(lxc_usernet_file)
         self.load_config(user_config)
@@ -45,6 +44,7 @@ class UserManagement:
         Loads the user configuration from the container configuration
         """
         self.config = container_config
+        self.container_name = self.config.name
         self.username = self.config['username']
         self.usernet_allocation = self.config['usernet_allocation']
 
@@ -82,7 +82,7 @@ class UserManagement:
         Owns the folders to the container user if necessary.
         """
         user_home = Path(getpwnam(self.username).pw_dir)
-        path_parts = ['.local', 'share', 'lxc', self.container]
+        path_parts = ['.local', 'share', 'lxc', self.container_name]
 
         lxc_dir = user_home
 
@@ -98,8 +98,10 @@ class UserManagement:
             gid = getpwnam(self.username).pw_gid
             if lxc_dir.stat().st_uid != uid or lxc_dir.stat().st_gid != gid:
                 self.logger.warning("[%s] Incorrect ownership of LXC directory: %s" % (self.username, lxc_dir))
-                chown(lxc_dir, getpwnam(self.username).pw_uid, getpwnam(self.username).pw_gid)
-                self.logger.debug("[%s] Setting ownership of LXC directory: %s" % (self.username, lxc_dir))
+                chown(lxc_dir, uid, gid)
+                self.logger.info("[%s] Setting ownership of LXC directory: %s" % (self.username, lxc_dir))
+            else:
+                self.logger.debug("[%s] Correct ownership already exists on LXC directory: %s" % (self.username, lxc_dir))
 
     def parse_usernet_user(self):
         """

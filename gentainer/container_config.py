@@ -6,10 +6,11 @@ __author__ = 'desultory'
 __version__ = '0.0.2'
 
 
-from .zen_custom import loggify
+from gentainer.zen_custom import loggify, pretty_print
 
 from importlib import import_module
 from tomllib import load
+from pathlib import Path
 
 
 @loggify
@@ -24,7 +25,7 @@ class ContainerConfig(dict):
         """
         Initialize a ContainerConfig object
         """
-        self.config_file = config_file
+        self.config_file = Path(config_file)
         self.load_config()
 
     @staticmethod
@@ -57,11 +58,14 @@ class ContainerConfig(dict):
         with open(self.config_file, 'rb') as config_file:
             toml_data = load(config_file)
 
-        self.logger.debug("Read TOML data: %s" % toml_data)
+        # Get the file name of the config file - the extension
+        self.name = self.config_file.name.split('.')[0]
+
+        self.logger.debug("[%s] Read TOML data: %s" % (self.name, toml_data))
 
         for key, value in toml_data.items():
             if hasattr(self, f"validate_{key}"):
-                self.logger.debug("Validating parameter %s: %s" % (key, value))
+                self.logger.debug("[%s] Validating parameter '%s':\n%s" % (self.name, key, pretty_print(value)))
                 getattr(self, f"validate_{key}")(value)
 
             if key in self.parameters:
@@ -72,9 +76,10 @@ class ContainerConfig(dict):
             else:
                 raise ValueError("Unknown parameter: %s" % key)
 
+        self.logger.debug("[%s] Loaded container config:\n%s" % (self.name, self))
+
     def __str__(self):
         """
         Returns a string representation of the object
         """
-        return '\n'.join(["  %s: %s" % (key, value) for key, value in self.items()])
-
+        return pretty_print({self.name: self})

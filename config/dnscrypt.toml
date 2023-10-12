@@ -5,3 +5,8 @@ usernet_allocation = { "lxcbr0" = 1 }
 base_image = "gentoo_tini"
 
 packages = ["net-dns/dnscrypt-proxy"]
+
+[networks.lxcbr0]
+type = "veth"
+ipv4 = "10.0.0.40/24"
+

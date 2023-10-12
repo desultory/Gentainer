@@ -6,7 +6,7 @@ __author__ = 'desultory'
 __version__ = '0.0.2'
 
 
-from .zen_custom import loggify
+from gentainer.zen_custom import loggify
 
 from pathlib import Path
 from subprocess import run
@@ -52,5 +52,5 @@ class Builder:
         Checks if the package exists in the portage database
         """
         for package in packages:
-            if not portage.db[portage.root]['porttree'].dbapi.match(package):
+            if not portage.db[portage.root]['porttree'].dbapi.xmatch('match-all', package):
                 raise KeyError("Package does not exist: %s" % package)

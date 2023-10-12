@@ -3,10 +3,10 @@ Gentoo container layer management
 """
 
 __author__ = 'desultory'
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
-from .zen_custom import loggify
+from gentainer.zen_custom import loggify
 
 from pathlib import Path
 from subprocess import run
@@ -84,7 +84,7 @@ class Layers:
         """
         Cleans the image layer for the specified container using btrfs
         """
-        self.logger.info("Deleting btrfs subvolume for container: %s" % self.container)
+        self.logger.warning("Deleting btrfs subvolume for container: %s" % self.container)
         args = ['btrfs', 'subvolume', 'delete', str(self.layer_dir)]
 
         cmd_out = run(args, capture_output=True)
