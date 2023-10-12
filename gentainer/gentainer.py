@@ -80,9 +80,7 @@ class Gentainer:
         List all containers
         """
         print("Containers:")
-        for container in self.containers.values():
-            if filter_string and filter_string in container.name or not filter_string:
-                print(container)
+        pretty_print(self.containers, print_out=True)
 
         print("=" * 80)
         print("Networks:")

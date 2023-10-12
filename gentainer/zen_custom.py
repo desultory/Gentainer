@@ -1,7 +1,7 @@
 """
 A collection of classes and decorators
 """
-__version__ = '3.0.0'
+__version__ = '3.0.1'
 __author__ = 'desultory'
 
 import logging
@@ -11,7 +11,7 @@ from threading import Thread, Event
 from queue import Queue
 
 
-def pretty_print(input_data, indent=0, prefix=""):
+def pretty_print(input_data, indent=0, prefix="", print_out=False):
     """
     Formats a dictionary/list into a string
     """
@@ -40,6 +40,10 @@ def pretty_print(input_data, indent=0, prefix=""):
             out += pretty_print(key, indent, prefix='+ ')
     else:
         out = " " * indent + f"{prefix}{input_data}\n"
+
+    if print_out:
+        print(out)
+
     return out
 
 
