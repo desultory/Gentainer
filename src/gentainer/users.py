@@ -1,12 +1,9 @@
-"""
-Gentoo container user management
-"""
-
 __author__ = 'desultory'
 __version__ = '0.0.2'
 
 
-from gentainer.zen_custom import loggify, replace_file_line
+from zenlib.util import replace_file_line
+from zenlib.logging import loggify
 
 from pathlib import Path
 from pwd import getpwnam
@@ -16,20 +13,14 @@ from os import chmod, mkdir, chown
 
 @loggify
 class UserManager:
-    """
-    Gentoo container user management class
-    """
-
     parameters = {"username": str,  # User name for the unprivileged container user
                   "usernet_allocation": dict}  # {interface: count} for the container user
 
-    def __init__(self, user_config, force=False, lxc_usernet_file='/etc/lxc/lxc-usernet', *args, **kwargs):
-        """
-        Initialize the user maangement class for the specified user
-        """
-        self.force = force  # Force operations
-        self.lxc_usernet_file = Path(lxc_usernet_file)
-        self.load_config(user_config)
+    def __init__(self, container_config, *args, **kwargs):
+        self.config = container_config
+        self.container_name = self.config.name
+        self.username = self.config['username']
+        self.usernet_allocation = self.config['usernet_allocation']
 
     def prepare(self):
         """
@@ -39,19 +30,8 @@ class UserManager:
         self.create_container_home()
         self.prepare_usernets()
 
-    def load_config(self, container_config):
-        """
-        Loads the user configuration from the container configuration
-        """
-        self.config = container_config
-        self.container_name = self.config.name
-        self.username = self.config['username']
-        self.usernet_allocation = self.config['usernet_allocation']
-
     def check_user(self):
-        """
-        Check if a user exists.
-        """
+        """Check if a user exists."""
         try:
             getpwnam(self.username)
             return True
@@ -60,10 +40,8 @@ class UserManager:
             return False
 
     def create_user(self):
-        """
-        Creates a user along with a home directory.
-        Also adds the user to the lxc group.
-        """
+        """Creates a user along with a home directory.
+        Also adds the user to the lxc group."""
         if self.check_user():
             self.logger.warning("User already exists: %s" % self.username)
             return False
@@ -77,13 +55,10 @@ class UserManager:
             raise RuntimeError("Failed to create user: %s; Error: %s" % (self.username, user_cmd.stderr.decode('utf-8')))
 
     def create_container_home(self):
-        """
-        Creates LXC folders for the container user.
-        Owns the folders to the container user if necessary.
-        """
+        """Creates LXC folders for the container user.
+        Owns the folders to the container user if necessary."""
         user_home = Path(getpwnam(self.username).pw_dir)
         path_parts = ['.local', 'share', 'lxc', self.container_name]
-
         lxc_dir = user_home
 
         for part in path_parts:
@@ -104,8 +79,7 @@ class UserManager:
                 self.logger.debug("[%s] Correct ownership already exists on LXC directory: %s" % (self.username, lxc_dir))
 
     def parse_usernet_user(self):
-        """
-        Checks /etc/lxc/lxc-usernet for an existing usernets entry.
+        """Checks /etc/lxc/lxc-usernet for an existing usernets entry.
         Returns a list containing the usernet interface and count as strings packed into a list.
         """
         usernet_entries = {}
@@ -129,9 +103,7 @@ class UserManager:
         return usernet_entries
 
     def create_usernet_file(self):
-        """
-        Creates an empty usernet file with 0644 permissions.
-        """
+        """Creates an empty usernet file with 0644 permissions."""
         if self.lxc_usernet_file.exists():
             self.logger.warning("[%s] Usernet file already exists: %s" % (self.username, self.lxc_usernet_file))
             if self.force:
@@ -144,9 +116,7 @@ class UserManager:
         chmod(self.lxc_usernet_file, 0o644)
 
     def prepare_usernets(self):
-        """
-        Prepares the usernet for the specified container
-        """
+        """Prepares the usernet for the specified container"""
         if not self.usernet_allocation:
             self.logger.warning("No usernet allocation specified for user: %s" % self.username)
             return False
@@ -158,9 +128,7 @@ class UserManager:
         self.add_usernet_entries()
 
     def add_usernet_entries(self):
-        """
-        Iterates over self.usernet_allocation {interface: count} and adds them to the usernet file.
-        """
+        """Iterates over self.usernet_allocation {interface: count} and adds them to the usernet file."""
         existing_usernets = self.parse_usernet_user()
 
         for interface, count in self.usernet_allocation.items():

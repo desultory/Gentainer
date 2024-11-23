@@ -1,4 +1,3 @@
-
 build_dir = "./build"  # The directory containers will be built in
 dir_back = "btrfs"  # The backing type for the build directory
                     # (btrfs or dir)
@@ -7,4 +6,8 @@ lxc_usernet_file = "/etc/lxc/lxc-usernet"  # LXC usernet config file path
 
 network_config_file = "networks.toml"  # The network config file
 
-modules = ["users.UserManager", "layers.Layers", "nets.ContainerNet", "builder.Builder"]  # Modules to load, used parameters, requirements and parsing imports
+modules = ["users.UserManager",
+	   "layers.Layers",
+	   "nets.ContainerNet",
+	   "nets.HostNet",
+	   "builder.Builder"]  # Modules to load, used parameters, requirements and parsing imports
